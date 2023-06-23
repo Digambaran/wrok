@@ -1,14 +1,15 @@
 name: run-tests
 run-name: running tests on pr by ${{ github.actor }}
+env:
+ SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY_OF_SLIM5}}
+ HOSTNAME: ${{ secrets.HOSTNAME  }}
+ USER_NAME: ${{ secrets.USER_NAME  }}
 on: []
 jobs:
   Testtt:
     runs-on: ubuntu-latest
     steps:
-      - env:
-        SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY_OF_SLIM5}}
-        HOSTNAME: ${{ secrets.HOSTNAME  }}
-        USER_NAME: ${{ secrets.USER_NAME  }}
+      - uses: actions/checkout@v3
       - run: echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
       - run: ssh -o StrictHostKeyChecking=no -i private_key -T ${USER_NAME}@${HOSTNAME}
       - run: mkdir Helloooooo

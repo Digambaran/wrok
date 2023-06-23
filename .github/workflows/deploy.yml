@@ -4,7 +4,7 @@ env:
  SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY_OF_SLIM5}}
  HOSTNAME: ${{ secrets.HOSTNAME  }}
  USER_NAME: ${{ secrets.USER_NAME  }}
-on: []
+on: workflow_dispatch
 jobs:
   Testtt:
     runs-on: ubuntu-latest

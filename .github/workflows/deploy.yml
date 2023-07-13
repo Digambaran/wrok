@@ -4,6 +4,7 @@ env:
   SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY_OF_SLIM5}}
   HOSTNAME: ${{ secrets.HOSTNAME  }}
   USER_NAME: ${{ secrets.USER_NAME  }}
+  CONTAINER_PATH: ${{ secrets.CONTAINER }}
 on: workflow_dispatch
 jobs:
   setup:
@@ -247,8 +248,64 @@ jobs:
           fi
           rm -rf ${private_key_path}
       - name: Start Fns
-        run: echo "Start fns"
+        run: |
+          echo "Starting functions"
+          private_key_path=~/private_key
+          echo "$SSH_PRIVATE_KEY" > ${private_key_path} && chmod 600 ${private_key_path}
+          port=$(ssh -o StrictHostKeyChecking=no -i ${private_key_path} -T ${USER_NAME}@${HOSTNAME} '
+
+          export PATH="$(echo $HOME)/.local/share/fnm:$PATH" >/dev/null 2>&1
+          eval "$(fnm env)" > /dev/null 2>&1
+
+          cd ${{ steps.decide.outputs.folder }}
+          BB_PM2_NAME="${{ steps.decide.outputs.folder }}-fn" bb start -bt function -pm2
+          port=$(grep -oP "(?<=localhost:)[0-9]+" .env.view)
+          sed -i '"'"'s@localhost\:[[:digit:]]\+@'$HOSTNAME'@g'"'"' .env.view
+          echo $port
+          ')
+          echo "function_port=$port" >> $GITHUB_OUTPUT
+          rm -rf ${private_key_path}
+
       - name: Build Views
-        run: echo "Build views"
+        run: |
+          echo "Build views"
+          private_key_path=~/private_key
+          echo "$SSH_PRIVATE_KEY" > ${private_key_path} && chmod 600 ${private_key_path}
+          ssh -o StrictHostKeyChecking=no -i ${private_key_path} -T ${USER_NAME}@${HOSTNAME} '
+
+            export PATH="$(echo $HOME)/.local/share/fnm:$PATH" >/dev/null 2>&1
+            eval "$(fnm env)" > /dev/null 2>&1
+            cd ${{ steps.decide.outputs.folder }} && bb start -bt ui
+
+            if [[ $? -ne 0 ]];
+              then
+                echo "ui start failed"
+                bb stop
+                rm -rf ${private_key_path} 
+                exit 1
+            fi
+
+            echo "ui elements started"
+            bb stop -bt ui
+            if [[ $? -ne 0 ]];
+              then
+                echo "ui stop failed"
+                bb stop
+                rm -rf ${private_key_path} 
+                exit 1
+            fi
+            echo "ui elements stopped"
+
+            echo "building container"
+            cd '"$CONTAINER_PATH"' && npm run build
+
+            cd ~/${{ steps.decide.outputs.folder }}
+            echo "building elements"
+            cd ./._ab_em_elements
+            npm run build
+
+            caddy start 
+          '
+
       - name: Switch
         run: echo "Switch"

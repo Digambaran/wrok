@@ -237,8 +237,8 @@ jobs:
           private_key_path=~/private_key
           echo "$SSH_PRIVATE_KEY" > ${private_key_path} && chmod 600 ${private_key_path}
           echo "Copying to ${{ steps.decide.outputs.folder }}"
-          ls
-          scp -i ${private_key_path}  -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -pqr  $(pwd) ${USER_NAME}@${HOSTNAME}:~/${{ steps.decide.outputs.folder }}
+          mkdir -p /var/www/html/${{ steps.decide.outputs.folder }}
+          scp -i ${private_key_path}  -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -pqr  $(pwd) ${USER_NAME}@${HOSTNAME}:/var/www/html/${{ steps.decide.outputs.folder }}
           if [[ $? -eq 0 ]];
             then
               echo "Copying successful"
@@ -257,7 +257,7 @@ jobs:
           export PATH="$(echo $HOME)/.local/share/fnm:$PATH" >/dev/null 2>&1
           eval "$(fnm env)" > /dev/null 2>&1
 
-          cd ${{ steps.decide.outputs.folder }}
+          cd /var/www/html/${{ steps.decide.outputs.folder }}
           BB_PM2_NAME="${{ steps.decide.outputs.folder }}-fn" bb start -bt function -pm2
           port=$(grep -oP "(?<=localhost:)[0-9]+" .env.view)
           sed -i '"'"'s@localhost\:[[:digit:]]\+@'$HOSTNAME'@g'"'"' .env.view
